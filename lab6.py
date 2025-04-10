@@ -24,10 +24,11 @@ c=[1, 1] # важность (вес?) эксперта"""
 """n=5
 r=[[1,2,3,4,5],[2,4,1,5,3],[4,2,1,5,3],[2,1,4,3,5],[3,1,2,4,5],[5,4,1,3,2]]
 c=[2,1.5,0.5,1,0.5,0.5]"""
-def get_Pm(filename='test.txt', v=False):
+
+def read_file(filename='test.txt'):
+    r=[]
     f = open(filename, 'r')
     c_line = f.readline()
-    r = []
     for line in f.readlines():
         if len(line.strip()):
             r.append([int(i) for i in line.split()])
@@ -40,13 +41,15 @@ def get_Pm(filename='test.txt', v=False):
         c = [float(i) for i in c_line.split()]
         if len(c) != m or sum(c) != m:
             print('wrong c')
+            c=[1.0]*m
     else:
         c = [1.0] * m
-    R = []
-    # 0. из r_k: a_i1<a_i3<a_i2 в R_k: [[1,1,1],[0,1,0],[0,1,1]]
-    # или сразу ввод R_k
+    return r,c,n,m
+
+def get_R(r,n,m):
+    R=[]
     for k in range(m):
-        a = np.array([[-1] * n for _ in range(n)])
+        a = [[-1] * n for _ in range(n)]
         for i in r[k]:
             a[i - 1][i - 1] = 1
             for j in range(n):
@@ -56,6 +59,8 @@ def get_Pm(filename='test.txt', v=False):
                 if a[j][i - 1] == -1:
                     a[j][i - 1] = 0
         R.append(a)
+    return R
+def get_Pm(R,c,n,m, v=False):
     if v:
         print(f'n={n}, m={m}')
         print('R=')
@@ -66,7 +71,7 @@ def get_Pm(filename='test.txt', v=False):
             print('-' * n * 2)
     P = np.zeros((n, n))
     for k in range(m):
-        P += c[k] * R[k]
+        P += c[k] * np.array(R[k])
     if v: print(f'P\n{P}\n')
     return P, m
 
@@ -166,8 +171,8 @@ def solve(I, best=[], v=False, forced_down=False):
     #print(f'2 best={best}')
     return best
 
-def presolve(filename, v=False):
-    P, m = get_Pm(filename)
+def presolve(R,c,n,m, v=False):
+    P, m = get_Pm(R,c,n,m)
     """P = [[0, 0, 1, 0, 0],
          [0, 0, 2, 3, 0],
          [0, 0, 0, 2, 0],
@@ -205,7 +210,7 @@ def presolve(filename, v=False):
         print(f'\nalpha:{alpha}')
         print(f'\neta:{eta}')
         # print(D)
-    return n, m, P, P1, Px, alpha, beta, gamma, eta, D
+    return P, P1, Px, alpha, beta, gamma, eta, D
 
 def get_first(P,n):
     R_=[[0]*n for _ in range(n)]
@@ -223,9 +228,36 @@ def get_first(P,n):
     #print(a)
     return [a[i][0] for i in range(n)]
 
-
+def main(rR,c,n_,m_,lin=True):
+    global P, P1, Px, alpha, beta, gamma, eta, D,n,m
+    n,m=n_,m_
+    R=[]
+    if lin:
+        R=get_R(rR,n,m)
+    else:
+        R=rR
+    P, P1, Px, alpha, beta, gamma, eta, D = presolve(R, c, n, m)
+    print(P)
+    I = get_first(P, n)
+    start = time.time()
+    ans = solve(I, forced_down=True)
+    ans = solve([])
+    finish = time.time()
+    ans_str=f'Решение:{ans[0]}\n'
+    for a in ans[1]:
+        ans_str+=f"\t{get_addition(a, n)[0] + 1}"
+        for i in a[-1::-1]:
+            ans_str+=f"<{i + 1}"
+        ans_str+='\n'
+    ans_str+=f'Время {finish - start}s.\n'
+    return ans_str
+P,P1,Px,alpha,beta,gamma,eta,D=[],[],[],[],[],[],[],dict()
+n,m=-1,-1
 if __name__=="__main__":
-    n, m, P, P1, Px, alpha, beta, gamma, eta, D=presolve('test25.txt')
+    r,c,n,m=read_file('test20.txt')
+    print(main(r,c,n,m))
+    """R=get_R(r,n,m)
+    P, P1, Px, alpha, beta, gamma, eta, D=presolve(R,c,n,m)
     print(P)
     I=get_first(P,n)
     #print(I)
@@ -243,4 +275,4 @@ if __name__=="__main__":
         print()
 
     print(f'time {finish - start}s.')
-    print(len(ans[1]))
+    print(len(ans[1]))"""

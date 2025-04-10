@@ -1,7 +1,6 @@
 
 import tkinter as tk
 from tkinter import messagebox
-from lab6 import main
 
 
 def center_window(window, width, height):
@@ -90,14 +89,6 @@ def create_linear_order_input_window(experts_count, alternatives_count):
 
     entries = []
 
-    frame = tk.Frame(scrollable_frame)
-    frame.pack(fill='x', padx=10, pady=5)
-
-    label = tk.Label(frame, text=f"Веса экспертов:")
-    label.pack(side='left')
-
-    entry_с = tk.Entry(frame)
-    entry_с.pack(side='right', fill='x', expand=True)
     for i in range(experts_count):
         frame = tk.Frame(scrollable_frame)
         frame.pack(fill='x', padx=10, pady=5)
@@ -110,17 +101,10 @@ def create_linear_order_input_window(experts_count, alternatives_count):
         entries.append(entry)
 
     def solve():
-        try:
-            nonlocal entries,entry_с
-            r = [[int(e) for e in entry.get().split(',')] for entry in entries]
-            c=[float(ci) for ci in entry_с.get().split()]
-            print(r)
-            print(c)
-            linear_window.destroy()
-            display_results(r,c,experts_count,alternatives_count, "линейные порядки")
-        except ValueError:
-            messagebox.showerror("Ошибка", "Неверное значение! Введите заново.")
-
+        nonlocal entries
+        results = [entry.get().split(',') for entry in entries]
+        linear_window.destroy()
+        display_results(results, "линейные порядки")
 
     button_solve = tk.Button(scrollable_frame, text="Решить", command=solve)
     button_solve.pack(padx=10, pady=10)
@@ -137,7 +121,7 @@ def create_matrix_input_window(experts_count, alternatives_count):
     matrix_window.title(f"Ввод матриц бинарных отношений для {experts_count} экспертов")
 
     # Центрирование окна
-    center_window(matrix_window, 400, 600)
+    center_window(matrix_window, 300, 600)
 
     canvas = tk.Canvas(matrix_window)
     scrollbar = tk.Scrollbar(matrix_window, orient="vertical", command=canvas.yview)
@@ -154,27 +138,19 @@ def create_matrix_input_window(experts_count, alternatives_count):
 
     matrices_entries = []
 
-    frame = tk.Frame(scrollable_frame)
-    frame.pack(fill='x', padx=10, pady=5)
-
-    label = tk.Label(frame, text=f"Веса экспертов:")
-    label.pack(side='left')
-
-    entry_с = tk.Entry(frame)
-    entry_с.pack(side='right', fill='x', expand=True)
     for i in range(experts_count):
-        frame = tk.Frame(scrollable_frame)
+        frame = tk.Frame(matrix_window)
         frame.pack(fill='x', padx=10, pady=5)
 
         label = tk.Label(frame, text=f"Матрица эксперта {i + 1}:")
         label.pack(side='top')
 
-        #matrix_frame = tk.Frame(frame)
-        #matrix_frame.pack(side='bottom')
+        matrix_frame = tk.Frame(frame)
+        matrix_frame.pack(side='bottom')
 
         matrix_entries = []
         for j in range(alternatives_count):
-            row_frame = tk.Frame(frame)
+            row_frame = tk.Frame(matrix_frame)
             row_frame.pack(fill='x', side='top')
 
             row_entries = []
@@ -186,18 +162,13 @@ def create_matrix_input_window(experts_count, alternatives_count):
         matrices_entries.append(matrix_entries)
 
     def solve():
-        try:
-            nonlocal matrices_entries
-            R = [[[int(cell.get()) for cell in row] for row in matrix] for matrix in matrices_entries]
-            c = [float(ci) for ci in entry_с.get().split()]
-            print(R)
-            print(c)
-            matrix_window.destroy()
-            display_results(R,c,experts_count,alternatives_count, "матрицы бинарных отношений")
-        except ValueError:
-            messagebox.showerror("Ошибка", "Неверное значение! Введите заново.")
+        nonlocal matrices_entries
+        results = [[[int(cell.get()) for cell in row] for row in matrix] for matrix in matrices_entries]
+        print(results)
+        matrix_window.destroy()
+        display_results(results, "матрицы бинарных отношений")
 
-    button_solve = tk.Button(scrollable_frame, text="Решить", command=solve)
+    button_solve = tk.Button(matrix_window, text="Решить", command=solve)
     button_solve.pack(padx=10, pady=10)
 
     canvas.pack(side="left", fill="both", expand=True)
@@ -206,7 +177,7 @@ def create_matrix_input_window(experts_count, alternatives_count):
     matrix_window.mainloop()
 
 
-def display_results(data,c,m,n, type_of_data):
+def display_results(data, type_of_data):
     # Окно для отображения результатов
     result_window = tk.Tk()
     result_window.title(f"Результаты ({type_of_data})")
@@ -216,24 +187,20 @@ def display_results(data,c,m,n, type_of_data):
 
     text_area = tk.Text(result_window, height=20, width=50)
     text_area.pack(padx=10, pady=10)
-    lin=True
+
     if type_of_data == "линейные порядки":
         for idx, order in enumerate(data):
             text_area.insert(tk.END, f"Эксперт {idx + 1}:\n")
-            text_area.insert(tk.END, ', '.join(map(str, order)) + "\n\n")
+            text_area.insert(tk.END, ', '.join(order) + "\n\n")
     elif type_of_data == "матрицы бинарных отношений":
-        lin=False
         for idx, matrix in enumerate(data):
             text_area.insert(tk.END, f"Матрица эксперта {idx + 1}:\n")
             for row in matrix:
                 text_area.insert(tk.END, ' '.join(map(str, row)) + "\n")
             text_area.insert(tk.END, "\n")
-    ans_str = main(data, c, n, m, lin=lin)
-    text_area.insert(tk.END,ans_str)
 
     result_window.mainloop()
 
 
-if __name__=="__main__":
-    # Запускаем начальное окно
-    create_initial_window()
+# Запускаем начальное окно
+create_initial_window()
