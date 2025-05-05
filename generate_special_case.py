@@ -34,10 +34,10 @@ def gener_N(n,m,N,Ni):
         print(f'\tk={k}')
     except KeyboardInterrupt:
         print(f'\tk={k}')
-#gener_N(20,9,5, 16)
-#gener_N(25,9,5, 16)
+gener_N(10,9,1, 16)
+"""gener_N(40,9,2, 19)
 gener_N(35,9,2, 19)
-gener_N(30, 9, 5, 19)
+gener_N(30, 9, 5, 19)"""
 
 
 

@@ -178,22 +178,22 @@ def create_linear_order_input_window(experts_count, alternatives_count):
     def solve():
         try:
             nonlocal entries,entry_c
-            entry_c.config(state="readonly")
+            #entry_c.config(state="readonly")
             if not (validate_input_c(entry_c,experts_count)):
                 raise ValueError
             for entry in entries:
                 if not validate_input_lin(entry,alternatives_count):
                     raise ValueError
-                entry.config(state="readonly")
+                #entry.config(state="readonly")
             r = [[int(e) for e in entry.get().split()] for entry in entries]
             c = [float(ci) for ci in entry_c.get().split()]
             print(r)
             print(c)
             #linear_window.destroy()
             solve_window(r,c,experts_count,alternatives_count, "линейные порядки")
-            entry_c.config(state="normal")
+            """entry_c.config(state="normal")
             for entry in entries:
-                entry.config(state="normal")
+                entry.config(state="normal")"""
         except ValueError:
             messagebox.showerror("Ошибка", "Неверное значение! Введите заново.")
 
@@ -227,9 +227,11 @@ def create_linear_order_input_window(experts_count, alternatives_count):
                                              "Введены некорректные веса для экспертов. Они заменены на веса по умолчанию (c_i=1.0, i=1,m)")
 
                         print('wrong c')
-                        c = [1.0] * m
+                        c = [1.0] * experts_count
                 else:
-                    c = [1.0] * m
+                    c = [1.0] * experts_count
+                    #messagebox.showerror("Внимание","Не были введены веса для экспертов. Веса заменены на веса по умолчанию (c_i=1.0, i=1,m)")
+
                 experts_coef.set(' '.join(map(str, c)))
                 for k in range(experts_count):
                     if k<m:
@@ -245,7 +247,7 @@ def create_linear_order_input_window(experts_count, alternatives_count):
     button_solve = tk.Button(scrollable_frame, text="Решить", command=solve)
     button_solve.pack(padx=10, pady=10)
 
-    load_button = tk.Button(scrollable_frame, text="Загрузить матрицу из файла", command=load_lin_from_file)
+    load_button = tk.Button(scrollable_frame, text="Загрузить данные из файла", command=load_lin_from_file)
     load_button.pack(padx=10, pady=10)
 
     button_back = tk.Button(scrollable_frame, text="Назад", command=go_back)
@@ -490,7 +492,12 @@ def solve_window(data,c,m,n, type_of_data):
             l = int(entry_last.get())
             ans_str1, ans1 = main(data, c, n, m, first=f-1, last=l-1, lin=True)
             ans_str2, ans2 = main(data, c, n, m, first=l-1, last=f-1, lin=True)
-            display_results(f'first={f}, last={l}\n{ans_str1} first={l}, last={f}\n{ans_str2}\n{f} лучше {l} в {ans2[0]/ans1[0]} раз')
+            ans_str=f'first={f}, last={l}\n{ans_str1} first={l}, last={f}\n{ans_str2}\n'
+            if ans1[0]<ans2[0]:
+                ans_str+=f'{f} лучше {l} в {ans2[0]/ans1[0]} раз'
+            else:
+                ans_str += f'{l} лучше {f} в {ans1[0]/ans2[0]} раз'
+            display_results(ans_str)
         except ValueError:
             messagebox.showerror("Ошибка", "Неверное значение! Введите заново.")
     def go_back():
@@ -500,7 +507,7 @@ def solve_window(data,c,m,n, type_of_data):
     window.title("Параметры")
 
     # Центрирование окна
-    center_window(window, 600, 200)
+    center_window(window, 600, 250)
 
     # Обычное решение
     button_solve = tk.Button(window, text="Решить", command=solve)
@@ -516,26 +523,26 @@ def solve_window(data,c,m,n, type_of_data):
     button_first = tk.Button(window, text="Закрепить первую альтернативу", command=first)
     button_first.grid(row=1,column=0,padx=10, pady=10)
     button_last = tk.Button(window, text="Закрепить последнюю альтернативу", command=last)
-    button_last.grid(row=1,column=1,padx=10, pady=10)
+    button_last.grid(row=2,column=0,padx=10, pady=10)
 
     label_first = tk.Label(window, text="first:")
-    label_first.grid(row=2, column=0, padx=10, pady=5, sticky='sw')
+    label_first.grid(row=3, column=0, padx=10, pady=5, sticky='sw')
     entry_first = tk.Entry(window)
-    entry_first.grid(row=2, column=1)
+    entry_first.grid(row=3, column=1)
     entry_first.bind("<FocusOut>", lambda event, e=entry_first: validate_input_n(e, 0, n))
 
     last_label = tk.Label(window, text="last:")
-    last_label.grid(row=3, column=0, padx=10, pady=5, sticky='sw')
+    last_label.grid(row=4, column=0, padx=10, pady=5, sticky='sw')
     entry_last = tk.Entry(window)
-    entry_last.grid(row=3, column=1)
+    entry_last.grid(row=4, column=1)
     entry_last.bind("<FocusOut>", lambda event, e=entry_last: validate_input_n(e, 0, n))
 
     button_first_last = tk.Button(window, text="Сравнить две альтернативы", command=first_last)
-    button_first_last.grid(row=2,rowspan=2, column=2, padx=10, pady=10)
+    button_first_last.grid(row=3,rowspan=2, column=2, padx=10, pady=10)
 
     # Назад к введению данных
     button_back = tk.Button(window, text="Назад", command=go_back)
-    button_back.grid(row=4, column=2,padx=10, pady=10)
+    button_back.grid(row=5, column=0,padx=10, pady=10)
 
     """canvas = tk.Canvas(window)
     scrollbar = tk.Scrollbar(window, orient="vertical", command=canvas.yview)

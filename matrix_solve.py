@@ -1,7 +1,7 @@
 import numpy as np
 import time
 import graphviz
-
+count=0
 class MatrixSolve:
     def __init__(self, n, m, P, v=0):
         self.v = v
@@ -87,7 +87,12 @@ class MatrixSolve:
                     I_add.append(i)
         return I_add
 
+
     def solve(self, I, best=[], first=-1, last=-1, forced_down=False):
+        global count
+        count+=1
+        if count%100==0:
+            if self.v:print(f'count={count}')
         if self.v: print(f'I{I}, best={best}')
         # print(f'best:{best}')
         if forced_down:
@@ -216,6 +221,8 @@ def get_P(R, c, n, m, v=False):
 
 
 def main(rR, c, n, m, forced_down=False, first=-1, last=-1, lin=True, v=False):
+    global count
+    count=0
     start = time.time()
     R = []
     if lin:
@@ -229,18 +236,16 @@ def main(rR, c, n, m, forced_down=False, first=-1, last=-1, lin=True, v=False):
         print(P)
 
     solver = MatrixSolve(n, m, P)
-    # I = get_first(P, n)
-    # print(I, get_nu(I[:-1]))
-    # ans = solve([])
     ans = solver.solve([], [], forced_down=forced_down, first=first, last=last)
     finish = time.time()
-    ans_str = f'Значение функционала:{ans[0]}\nРешения:\n'
+    ans_str = f'Значение функционала:{ans[0]}\nНайденные линейные порядки:\n'
     for a in ans[1]:
         ans_str += f"\t"
         for i in a[-1::-1]:
             ans_str += f"{i + 1}<"
         ans_str = ans_str[:-1]+'\n'
-    ans_str += f'Время {finish - start}s.\n'
+    ans_str += f'Время {finish - start}s.\nколичество count={count}\n'
+    count=0
     # forced_down=True
     """if forced_down:
         start = time.time()
@@ -335,6 +340,8 @@ def get_C(P,n=None):
                 C[i][j] = 1
     return C
 def special_case(r, c, n, m, v=0):
+    global count
+    count=0
     start = time.time()
     ans_str=''
     P = get_P(get_R(r, n, m), c, n, m, v)
@@ -360,7 +367,7 @@ def special_case(r, c, n, m, v=0):
     sD.sort()
     if v:
         print(sD)
-    ans_str+=f'D={[sd[1] for sd in sD]}\n'
+    ans_str+=f'D={[[d+1 for d in sd[1]] for sd in sD]}\n'
 
     ans_rename = []
     g = graphviz.Digraph(name='main', engine='fdp')
@@ -370,15 +377,15 @@ def special_case(r, c, n, m, v=0):
         g.node(f'a{i}', label=f'{i + 1}')
     for k1 in range(k):
         with g.subgraph(name=f'cluster{k1}') as c:
-            for i in D[k1]:
+            for i in sD[k1][1]:
                 c.node(f'a{i}')
-                for j in D[k1]:
+                for j in sD[k1][1]:
                     if C[i][j]:
                         c.edge(f'a{i}', f'a{j}')
-            c.attr(label=f'D{k1 + 1}')
+            c.attr(label=f'D{k1 + 1} ({len(sD[k1][1])})')
     for k1 in range(k):
         for k2 in range(k):
-            if C[D[k1][0]][D[k2][0]]:
+            if C[sD[k1][1][0]][sD[k2][1][0]]:
                 # g.edge(f'a{D[k1][0]}',f'a{D[k2][0]}',ltail=f'cluster{k1}', lhead=f'cluster{k2}',color='red')
                 g.edge(f'cluster{k1}', f'cluster{k2}', color='blue')
 
@@ -432,11 +439,11 @@ def special_case(r, c, n, m, v=0):
 
 
 if __name__ == "__main__":
-    r, c, n, m = read_file('test20.txt')
+    r, c, n, m = read_file('test_n10_ni5_D6_2025_04_24_15_46_29032440.txt')
     if m % 2: # and c==[1.0]*m
         print(special_case(r, c, n, m, 1))
-    print(main(r, c, n, m))
-    """
+    #print(main(r, c, n, m))
+
     ans=[]
     for i in range(n):
         print(f'last={i+1}')
@@ -452,11 +459,20 @@ if __name__ == "__main__":
         ans.append(a)
     print('\n'.join([f'r_first({i + 1})={ans[i]}' for i in range(n)]))
     ans=dict()
+    rr=[[0]*n for i in range(n)]
     for i in range(n):
         for j in range(n):
             if i == j: continue
             print(f'first={i+1}, last={j+1}')
             ans_str, a=main(r,c,n,m,first=i,last=j)
             print(ans_str)
+            rr[i][j]=a[0]
             ans[(i,j)]=a
-    print('\n'.join([f'r({k[0]+1},{k[1]+1})={ans[k]}' for k in ans.keys()]))"""
+    print('\n'.join([f'r({k[0]+1},{k[1]+1})={ans[k]}' for k in ans.keys()]))
+    print(*rr, sep='\n')
+    for i in range(n):
+        for j in range(i+1,n):
+            rr[i][j], rr[j][i] = rr[j][i]/rr[i][j], rr[i][j]/rr[j][i]
+    for i in range(n):
+        for j in range(n):
+            print(rr[i][j])
