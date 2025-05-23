@@ -6,7 +6,7 @@ n=35
 m=9
 
 N=5
-def gener_N(n,m,N,Ni):
+def find_special_case(n,m,N,Ni):
     print(f"start gener_N(n={n}, m={m}, N={N}, Ni={Ni})")
     k = 0#[]
     try:
@@ -17,7 +17,7 @@ def gener_N(n,m,N,Ni):
             str_test, n, m, c, r = get_test(n, m)
             P = get_P(get_R(r, n, m), c, n, m)
             C = get_C(P, n)
-            D = scc(C, n)
+            D = scc(C)
             k+=1#k.append([len(Di) for Di in D])
             l = len(D)
             ni = max([len(Di) for Di in D])
@@ -26,7 +26,17 @@ def gener_N(n,m,N,Ni):
                 print(D)
                 date_str=datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S%f")
                 print(date_str)
-                f = open(f'test_n{n}_ni{ni}_D{l}_{date_str}.txt', 'w')
+                f = open(f'tests/test_n{n}_ni{-ni}_D{l}_m{m}_{date_str}.txt', 'w')
+                f.write(str_test)
+                f.write(f'\n{D}')
+                f.close()
+                N -= 1
+            elif ni>-Ni>0:
+                print(l, ni)
+                print(D)
+                date_str = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S%f")
+                print(date_str)
+                f = open(f'tests/test_n{n}_ni{ni}_D{l}_m{m}_{date_str}.txt', 'w')
                 f.write(str_test)
                 f.write(f'\n{D}')
                 f.close()
@@ -34,12 +44,10 @@ def gener_N(n,m,N,Ni):
         print(f'\tk={k}')
     except KeyboardInterrupt:
         print(f'\tk={k}')
-gener_N(10,9,1, 16)
-"""gener_N(40,9,2, 19)
-gener_N(35,9,2, 19)
-gener_N(30, 9, 5, 19)"""
-
-
+#find_special_case(4,3,1, -2)
+#find_special_case(40,9,2, 19)
+find_special_case(35,9,2, 19)
+#find_special_case(30, 9, 5, 19)
 
 
 
