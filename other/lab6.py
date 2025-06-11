@@ -28,6 +28,7 @@ c=[2,1.5,0.5,1,0.5,0.5]"""
 def read_file(filename='test.txt'):
     r=[]
     f = open(filename, 'r')
+    nm_line = f.readline()
     c_line = f.readline()
     for line in f.readlines():
         if len(line.strip()):
@@ -77,11 +78,12 @@ def get_Pm(R,c,n,m, v=False):
 
 
 def get_D(I,v=False):
+    if v:print(f'\tget_D({I}=',end='')
     rho=tuple(sorted(I[:-1])+[I[-1], -1])
-    if v: print(f'\tget_D({I}={rho})=')
+    if v: print(f'{rho})=')
     d = 0
     if rho in D.keys():
-        ifv:print(f'\t\talready count={D[rho]}')
+        if v:print(f'\t\talready count={D[rho]}')
         return D[rho]
     for i in range(n):
         if i in I:
@@ -119,16 +121,17 @@ def get_nu(I,v=False):
 
 """хранить последовательность как i[0]=номер '1' в поледовательности или -1 если не используется?
 или просто доп массив 1/0 - беру/не беру..."""
-def get_addition(I, n):
+def get_addition(I, n, without=[]):
     A = list(range(n))
     I_add = []
     for i in A:
         if i not in I:
-            I_add.append(i)
+            if i not in without:
+                I_add.append(i)
     return I_add
 
 
-def solve(I, best=[], v=False, forced_down=False):
+def solve(I, best=[],first=-1,last=-1,forced_down=False, v=False):
     if v:print(f'I{I}, best={best}')
     #print(f'best:{best}')
     if forced_down:
@@ -138,18 +141,24 @@ def solve(I, best=[], v=False, forced_down=False):
         best=[nu,[I[:-1]]]
         I=[]
         forced_down=False
-    I_add = get_addition(I, n)
-    #print(I, A,I_add)
+    if first != -1:
+        if not len(I):
+            I=[first]
+    I_add = get_addition(I, n, [last])
+    if v: print(f'get_add{I}={I_add}')
     nu_i = {}
     for i in I_add:
         nu_i[i] = get_nu(I + [i])
     nu_i_sort = sorted(nu_i.items(), key=lambda item: item[::-1])
     if v:print(f'\tnu:{nu_i_sort}')
+    #print(f'add:{I_add}')
     if len(best) and best[0] < nu_i_sort[0][1]:
 
         #print(f'-best={best}')
         return best
-    if len(nu_i_sort) == 2:
+
+    if len(nu_i_sort) == 2-int(last!=-1):
+        #print(f"-------------{nu_i_sort}")
         if len(best):
             if best[0] == nu_i_sort[0][1]:
                 best[1].append(I + [nu_i_sort[0][0]])
@@ -160,14 +169,18 @@ def solve(I, best=[], v=False, forced_down=False):
             best=[-1,[]]
             best[0] = nu_i_sort[0][1]
             best[1] = [I + [nu_i_sort[0][0]]]
-        if nu_i_sort[1][1] == nu_i_sort[0][1]:
-            best[1].append(I + [nu_i_sort[1][0]])
+        if len(nu_i_sort) == 2:
+            if last != -1:
+                print('aaaaaaaaaaaaaaaaaaaa')
+            else:
+                if nu_i_sort[1][1] == nu_i_sort[0][1]:
+                    best[1].append(I + [nu_i_sort[1][0]])
         #print(f'1 best={best}')
         return best
-    for nu in nu_i_sort:
+    for nu in nu_i_sort: # если не 2
         if len(best) and best[0]<nu[1]:
             return best
-        best=solve(I+[nu[0]], best, v, forced_down)
+        best=solve(I+[nu[0]], best, first,last,v=v)
     #print(f'2 best={best}')
     return best
 
@@ -228,7 +241,7 @@ def get_first(P,n):
     #print(a)
     return [a[i][0] for i in range(n)]
 
-def main(rR,c,n_,m_,lin=True):
+def main(rR,c,n_,m_,forced_down=False,first=-1, last=-1,lin=True,v=False):
     global P, P1, Px, alpha, beta, gamma, eta, D,n,m
     n,m=n_,m_
     R=[]
@@ -236,12 +249,13 @@ def main(rR,c,n_,m_,lin=True):
         R=get_R(rR,n,m)
     else:
         R=rR
-    P, P1, Px, alpha, beta, gamma, eta, D = presolve(R, c, n, m)
-    print(P)
-    I = get_first(P, n)
+    P, P1, Px, alpha, beta, gamma, eta, D = presolve(R, c, n, m,v=v)
+    #print(P)
     start = time.time()
-    ans = solve(I, forced_down=True)
-    ans = solve([])
+    #I = get_first(P, n)
+    #print(I, get_nu(I[:-1]))
+    #ans = solve([])
+    ans=solve([],[],first=first, last=last, v=v)
     finish = time.time()
     ans_str=f'Решение:{ans[0]}\n'
     for a in ans[1]:
@@ -250,12 +264,49 @@ def main(rR,c,n_,m_,lin=True):
             ans_str+=f"<{i + 1}"
         ans_str+='\n'
     ans_str+=f'Время {finish - start}s.\n'
-    return ans_str
+    #forced_down=True
+    if forced_down:
+        start = time.time()
+        I = get_first(P, n)
+        ans = solve(I, [], forced_down=True, v=v)
+        finish = time.time()
+        ans_str += f'Решение с ускорением:{ans[0]}\n'
+        ans_str+=f'nu({I})={get_nu(I[:-1])}\n'
+        for a in ans[1]:
+            ans_str += f"\t{get_addition(a, n)[0] + 1}"
+            for i in a[-1::-1]:
+                ans_str += f"<{i + 1}"
+            ans_str += '\n'
+        ans_str += f'Время {finish - start}s.\n'
+    return ans_str, ans[0]
 P,P1,Px,alpha,beta,gamma,eta,D=[],[],[],[],[],[],[],dict()
 n,m=-1,-1
 if __name__=="__main__":
-    r,c,n,m=read_file('test20.txt')
-    print(main(r,c,n,m))
+    r,c,n,m=read_file('test_lab6.txt')
+    #print(main(r, c, n, m)[0])
+    ans=[]
+    for i in range(n):
+        print(f'last={i+1}')
+        ans_str, a=main(r,c,n,m,last=i)
+        print(ans_str)
+        ans.append(a)
+    print('\n'.join([f'r_last({i+1})={ans[i]}' for i in range(n)]))
+    ans = []
+    for i in range(n):
+        print(f'first={i + 1}')
+        ans_str, a = main(r, c, n, m, first=i)
+        print(ans_str)
+        ans.append(a)
+    print('\n'.join([f'r_first({i + 1})={ans[i]}' for i in range(n)]))
+    ans=dict()
+    for i in range(n):
+        for j in range(n):
+            if i == j: continue
+            print(f'first={i+1}, last={j+1}')
+            ans_str, a=main(r,c,n,m,first=i,last=j)
+            print(ans_str)
+            ans[(i,j)]=a
+    print('\n'.join([f'r({k[0]+1},{k[1]+1})={ans[k]}' for k in ans.keys()]))
     """R=get_R(r,n,m)
     P, P1, Px, alpha, beta, gamma, eta, D=presolve(R,c,n,m)
     print(P)

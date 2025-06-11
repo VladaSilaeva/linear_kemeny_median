@@ -1,11 +1,8 @@
-
 import tkinter as tk
 import time
 from tkinter import messagebox, filedialog
 from matrix_solve import main,special_case
-
 from PIL import Image, ImageTk
-
 
 
 def center_window(window, width, height):
@@ -445,7 +442,7 @@ def solve_window(data,c,m,n, type_of_data):
     def solve():
         start = time.time()
         lin = type_of_data=="линейные порядки"
-        ans_str, ans = main(data, c, n, m, lin=lin)
+        ans_str, ans, solver = main(data, c, n, m, lin=lin)
         finish = time.time()
         #t=finish-start
 
@@ -454,7 +451,7 @@ def solve_window(data,c,m,n, type_of_data):
 
     def fast_solve():
         lin = type_of_data == "линейные порядки"
-        ans_str, ans = main(data, c, n, m, lin=lin, forced_down=True)
+        ans_str, ans, solver = main(data, c, n, m, lin=lin, forced_down=True)
         display_results("fast solve\n"+ans_str)
     def special_solve():
         ans_str, ans = special_case(data,c,n,m)
@@ -464,9 +461,9 @@ def solve_window(data,c,m,n, type_of_data):
         ans_strs=""
         ans=[]
         for i in range(n):
-            ans_strs += f'first={i + 1}'
-            ans_str, a = main(data, c, n, m, first=i, lin=True)
-            ans_strs+=ans_str
+            ans_strs += f'first={i + 1}\n'
+            ans_str, a, solver = main(data, c, n, m, first=i, lin=True)
+            ans_strs+=ans_str+'\n'
             ans.append(a)
         ans_str+='\n'.join([f'r_first({i + 1})={ans[i]}' for i in range(n)])
         display_results(ans_strs)
@@ -475,9 +472,9 @@ def solve_window(data,c,m,n, type_of_data):
         ans_strs = ""
         ans = []
         for i in range(n):
-            ans_strs += f'last={i + 1}'
-            ans_str, a = main(data, c, n, m, last=i, lin=True)
-            ans_strs += ans_str
+            ans_strs += f'last={i + 1}\n'
+            ans_str, a, solver = main(data, c, n, m, last=i, lin=True)
+            ans_strs += ans_str+'\n'
             ans.append(a)
         ans_str += '\n'.join([f'r_last({i + 1})={ans[i]}' for i in range(n)])
         display_results(ans_strs)
@@ -490,8 +487,8 @@ def solve_window(data,c,m,n, type_of_data):
                 raise ValueError
             f = int(entry_first.get())
             l = int(entry_last.get())
-            ans_str1, ans1 = main(data, c, n, m, first=f-1, last=l-1, lin=True)
-            ans_str2, ans2 = main(data, c, n, m, first=l-1, last=f-1, lin=True)
+            ans_str1, ans1,solver = main(data, c, n, m, first=f-1, last=l-1, lin=True)
+            ans_str2, ans2,solver = main(data, c, n, m, first=l-1, last=f-1, lin=True)
             ans_str=f'first={f}, last={l}\n{ans_str1} first={l}, last={f}\n{ans_str2}\n'
             if ans1[0]<ans2[0]:
                 ans_str+=f'{f} лучше {l} в {ans2[0]/ans1[0]} раз'
@@ -577,8 +574,11 @@ def display_results(ans_str, type=None):
     # Окно для отображения результатов
     result_window = tk.Toplevel()
     result_window.title(f"Результаты")
+    l=6
+    if type is not None:
+        l=1
 
-    text_area = tk.Text(result_window, height=10, width=400)
+    text_area = tk.Text(result_window, height=10*l, width=400)
     text_area.pack(padx=10, pady=10)
     if type is not None:
         canvas = tk.Canvas(result_window,height=600,width=800,bg="white")
@@ -597,7 +597,7 @@ def display_results(ans_str, type=None):
     # Центрирование окна
     center_window(result_window, 800, 600)
     text_area.insert(tk.END,ans_str)
-    text_area.config(state=["disabled"])
+    text_area.config(state="disabled")
     result_window.mainloop()
 
 
