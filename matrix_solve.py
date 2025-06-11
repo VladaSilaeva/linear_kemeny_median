@@ -1,13 +1,14 @@
 import time
 from itertools import permutations, product
 from math import factorial
+from random import shuffle
+
 import graphviz
 import numpy as np
 from treelib import Tree
-from math import factorial
 
 count = 0
-counting=True
+counting=False
 
 class MatrixSolve:
     def __init__(self, n, m, P, v=0,use_tree=True):
@@ -27,8 +28,10 @@ class MatrixSolve:
         self.D = dict()  # словарь хранит уже посчитанные значения D_{i1,i2,...,ik}
 
         self.first_I = None  # хранит значение предварительно посчитанного рекорда
+        self.D_min=0 # минимальное значение функции D на множестве ВСЕХ бинарных отношений
 
         self.tree = None  # дерево решения
+        self.tree_countD=0
         self.use_tree = use_tree
 
         self.P1[:] = m
@@ -50,6 +53,7 @@ class MatrixSolve:
             self.D[(i, -1)] = self.beta[i]
             self.alpha[i] = np.sum(self.Px[i])
             self.eta[i] = self.gamma[i] - self.alpha[i]
+        self.D_min=sum(self.alpha)
         if self.v:
             print(f'\nbeta:{self.beta}')
             print(f'\ngamma:{self.gamma}')
@@ -109,12 +113,11 @@ class MatrixSolve:
         if self.v > 1: print(f')+{eta_min}={nu}')
         return nu
 
-    def solve(self, I=None, I_add=None, best=None, first=-1, last=-1, forced_down=False):
+    def solve(self, I=None, I_add=None, best=None, first=-1, last=-1, is_beta_sort=True):
         """Функция рекурсивного обхода дерева решений для метода ветвей и границ.
         Принимает:
             first=i_f - индекс закрепленного на 1-м месте или -1, если 1-й не закреплен
             last=i_l - индекс закрепленного на n-м месте или -1, если последний не закреплен
-            forced_down - считать ли предварительный рекорд
         Передает сама себе:
             I =[i1, i2, ..., ik] - список индексов текущей последовательности <a_i1, a_i2, ..., a_ik>
             I_add=set({1,2,...,n}\{i1, i2, ..., ik}) - дополнение к I. Также если закреплен последний, то last не в I_add
@@ -127,90 +130,101 @@ class MatrixSolve:
                 (медиана - [i1,...,in], где ik - int от 1 до n)"""
 
         global count  # для подсчета количества вызовов solve
-        count += 1
+        count+=1
         if count % 100 == 0:
-            if self.v > 4 or counting: print(f'count={count/factorial(self.n):.16f}%\t{count}')
-
-
-        if I is None:  # новое решение
-            if self.use_tree:self.tree = Tree()
-            I_add = set(range(self.n))
-            if first != -1:
-                I.append(first)
+            if counting:print(count)
+        if I is None: # начало решения
+            nu_str=""
+            if self.use_tree:
+                self.tree = Tree()
+                self.tree_countD=0
+            if self.v:print("solution start")
+            I=[]
+            I_add=set(range(self.n))
+            if first != -1: # если первый закреплен
                 if self.use_tree:self.tree.create_node(f"({first+1})", f"{first}")
+                if self.v:print(f"first={first}")
+                I.append(first)
                 I_add.remove(first)
             else:
-                I = []
-                if self.use_tree:self.tree.create_node("(-)", "")
-            if last != -1: I_add.remove(last)
-
-        if self.v: print(f'I{I}, best={best}')
-
-        if forced_down:  # предварительное решение
-            self.get_first()
-            nu = [self.get_nu(I_[:-1]) for I_ in self.first_I[1]]
-            self.first_I[0] = min(nu)
-            if self.v: print(f'presolve record nu={nu}: {self.first_I}')
-            best = [self.first_I[0], []]
-            I = []
-            forced_down = False
-        if self.v > 1: print(f'get_add{I}={I_add}')
-        nu_i = {}  # key=i_{k+1}, item=[nu{i1,i2,...,ik,i{k+1}}, beta{i1,i2,...ik,i{k+1}}]
-        if len(I_add) == 2 and last != -1:
-            I_ = list(I_add)
-            nu_i[(I_[0], I_[1])] = [self.get_nu(I + [I_[0], I_[1]]), self.get_beta(I + [I_[0], I_[1]])]
-            nu_i[(I_[1], I_[0])] = [self.get_nu(I + [I_[1], I_[0]]), self.get_beta(I + [I_[1], I_[0]])]
-            nu_i_sort = sorted(nu_i.items(), key=lambda item: item[::-1])
-            if self.use_tree:
-                for ij, nu_b in nu_i_sort:
-                    self.tree.create_node(f"────({ij[0]+1})", ' '.join(map(str, I + [ij[0]])), parent=' '.join(map(str, I)))
-                    self.tree.create_node(f"nu={nu_b[0]}─({ij[1]+1})", ' '.join(map(str, I + [ij[0], ij[1]])),
-                                      parent=' '.join(map(str, I + [ij[0]])))
-        else:
-            for i in I_add:
-                nu_i[i] = [self.get_nu(I + [i]), self.get_beta(I + [i])]
-            nu_i_sort = sorted(nu_i.items(), key=lambda item: item[::-1])
-            if self.use_tree:
-                for i, nu_b in nu_i_sort:
-                    self.tree.create_node(f"nu={nu_b[0]}─({i+1})", ' '.join(map(str, I + [i])),
-                                      parent=' '.join(map(str, I)))
-        if self.v: print(f'\tnu:{nu_i_sort}')
-        if best is not None and best[0] < nu_i_sort[0][1][0]:  # наименьшая из веток плоха => отсекаем все ветки
-            return best
-        if len(nu_i_sort) == 2:  # сравнение 2-x последних альтернатив (выбор рекорда)
+                if self.use_tree:self.tree.create_node(nu_str+"(-)", "")
             if last != -1:
-                I1 = I + [nu_i_sort[0][0][0], nu_i_sort[0][0][1], last]
-                I2 = I + [nu_i_sort[1][0][0], nu_i_sort[1][0][1], last]
-            else:
-                I1 = I + [nu_i_sort[0][0], nu_i_sort[1][0]]
-                I2 = I + [nu_i_sort[1][0], nu_i_sort[0][0]]
-            if best is not None:
-                if best[0] == nu_i_sort[0][1][0]:
-                    best[1].append(I1)
-                    if self.use_tree:self.tree.create_node(f"D={nu_i_sort[0][1][0]}─[{I1[-1]+1}]", ' '.join(map(str, I1)),
-                                          parent=' '.join(map(str, I1[:-1])))
-                else:  # best[0] > nu_i_sort[0][1][0] т.к. отсекли ранее плохие
-                    best[0] = nu_i_sort[0][1][0]
-                    best[1] = [I1]
-                    if self.use_tree:self.tree.create_node(f"D={nu_i_sort[0][1][0]}─[{I1[-1]+1}]", ' '.join(map(str, I1)),
-                                          parent=' '.join(map(str, I1[:-1])))
-            else:  # получаем первый рекорд
-                best = [-1, []]
-                best[0] = nu_i_sort[0][1][0]
-                best[1] = [I1]
-                if self.use_tree:self.tree.create_node(f"D={nu_i_sort[0][1][0]}─[{I1[-1]+1}]", ' '.join(map(str, I1)),
-                                      parent=' '.join(map(str, I1[:-1])))
-            if nu_i_sort[1][1][0] == nu_i_sort[0][1][0]:  # ветки одинаковые по D, добавляем в рекорд и вторую
-                best[1].append(I2)
-                if self.use_tree:self.tree.create_node(f"D={nu_i_sort[0][1][0]}─[{I2[-1]+1}]", ' '.join(map(str, I2)),
-                                      parent=' '.join(map(str, I2[:-1])))
-            return best
-        for nu in nu_i_sort:  # если осталось более 2-х ветвлений идем далее вниз по дереву
-            if best is not None and best[0] < nu[1][0]:  # отсекаем неподходящие ветки
+                if self.v:print(f"last={last}")
+                I_add.remove(last)
+        if self.v:print(f"I={I}, I_add={I_add}, best={best}")
+        nu_beta_i = [(self.get_nu(I+[i]),self.get_beta(I+[i]),i) for i in I_add]
+        if is_beta_sort:
+            nu_beta_i.sort(key=lambda x:(x[0], x[2]))
+        else:
+            nu_beta_i.sort()
+        if self.v:print(f"nu={nu_beta_i}")
+        if len(I) == self.n-2: # если уровень дерева n-2 (ниже спускаться не нужно)
+            if self.v:print(f"level n-2")
+            if last!=-1: end=last
+            else: end=nu_beta_i[1][2]
+            if best is None: # первый рекорд
+                best = [nu_beta_i[0][0], [I + [nu_beta_i[0][2],end]]]
+                if self.use_tree:
+                    self.tree.create_node(f"nu={nu_beta_i[0][0]}─[{nu_beta_i[0][2]+1}]",
+                                                        ' '.join(map(str, I + [nu_beta_i[0][2]])),
+                                                        parent=' '.join(map(str, I)))
+                    self.tree.create_node(f"D{self.tree_countD}={nu_beta_i[0][0]}─[{end+1}]",
+                                                        ' '.join(map(str, I + [nu_beta_i[0][2],end])),
+                                                        parent=' '.join(map(str, I + [nu_beta_i[0][2]])))
+                if self.v:print(f"first best={best}")
+            elif best[0] == nu_beta_i[0][0]: # добавляем послед-ть0 к существующему рекорду
+                best[1].append(I + [nu_beta_i[0][2],end])
+                if self.use_tree:
+                    self.tree.create_node(f"nu={nu_beta_i[0][0]}─[{nu_beta_i[0][2] + 1}]",
+                                          ' '.join(map(str, I + [nu_beta_i[0][2]])),
+                                          parent=' '.join(map(str, I)))
+                    self.tree.create_node(f"D{self.tree_countD}={nu_beta_i[0][0]}─[{end+1}]",
+                                                        ' '.join(map(str, I + [nu_beta_i[0][2],end])),
+                                                        parent=' '.join(map(str, I + [nu_beta_i[0][2]])))
+                if self.v:print(f"add to best {best[1][-1]}")
+            elif best[0] > nu_beta_i[0][0]:  # послед-ть0 - новый рекорд
+                if self.v:print(f"{best[0]}>{nu_beta_i[0][0]} => ", end='')
+                best = [nu_beta_i[0][0], [I + [nu_beta_i[0][2],end]]]
+                self.tree_countD+=1
+                if self.use_tree:
+                    self.tree.create_node(f"nu={nu_beta_i[0][0]}─[{nu_beta_i[0][2] + 1}]",
+                                          ' '.join(map(str, I + [nu_beta_i[0][2]])),
+                                          parent=' '.join(map(str, I )))
+                    self.tree.create_node(f"D{self.tree_countD}={nu_beta_i[0][0]}─[{end+1}]",
+                                                        ' '.join(map(str, I + [nu_beta_i[0][2],end])),
+                                                        parent=' '.join(map(str, I + [nu_beta_i[0][2]])))
+                if self.v:print(f"new best={best}")
+            else: # рекорд лучше ()
                 return best
-            I_add.remove(nu[0])
-            best = self.solve(I=I + [nu[0]], I_add=I_add, best=best, first=first, last=last)  # обход ветвей
-            I_add.add(nu[0])
+            if last==-1 and best[0] == nu_beta_i[1][0]: # случай если nu1==nu2
+                best[1].append(I + [nu_beta_i[1][2],nu_beta_i[0][2]])
+                if self.use_tree:
+                    self.tree.create_node(f"nu={nu_beta_i[1][0]}─[{nu_beta_i[1][2] + 1}]",
+                                          ' '.join(map(str, I + [nu_beta_i[1][2]])),
+                                          parent=' '.join(map(str, I)))
+                    self.tree.create_node(f"D{self.tree_countD}={nu_beta_i[1][0]}─[{nu_beta_i[0][2]+1}]",
+                                                        ' '.join(map(str, I + [nu_beta_i[1][2],nu_beta_i[0][2]])),
+                                                        parent=' '.join(map(str, I + [nu_beta_i[1][2]])))
+                if self.v:print(f"add to best {I + [nu_beta_i[1][2],nu_beta_i[0][2]]}")
+            return best
+        k=0
+        while k<len(nu_beta_i):
+            nu,beta,i=nu_beta_i[k]
+            if self.v:print(f"nu={nu}, beta={beta}, I+i={I}+{i}")
+            if best is not None and nu > best[0]:
+                break
+            if self.use_tree:
+                self.tree.create_node(f"nu={nu}─({i + 1})", ' '.join(map(str, I + [i])),
+                                  parent=' '.join(map(str, I)))
+            if self.v:print(f"to {I + [i]}")
+            best = self.solve(I + [i], I_add - {i}, best, first, last)
+            k+=1
+        if self.use_tree:
+            while k<len(nu_beta_i):
+                nu, beta, i = nu_beta_i[k]
+                self.tree.create_node(f"nu={nu}─({i + 1})x", ' '.join(map(str, I + [i])),
+                                      parent=' '.join(map(str, I)))
+                k+=1
         return best
 
     def get_first(self):
@@ -232,9 +246,30 @@ class MatrixSolve:
             kappa[k].append(i)
         kappa_sort = sorted(kappa.items())
         if self.v: print(f'get first={kappa_sort}')
-        self.first_I = [-1, product([list(permutations(i[1])) for i in kappa_sort])]
-        if self.v: print(self.first_I)
+        K=1
+        for ks in kappa_sort:
+            K*=factorial(len(ks[1]))
+        if self.v:print(f"num of lambda={K}={'*'.join([f'{len(ks[1])}!' for ks in kappa_sort])}")
+        if K>10000:
+            nus=[]
+            for i in range(10000):
+                I=[]
+                for k,p in kappa_sort:
+                    shuffle(p)
+                    I+=p
+                nus.append(self.get_nu(I[:-1]))
+            self.first_I = [min(nus),[]]
+        else:
+            prods=product(*[list(permutations(i[1])) for i in kappa_sort])
+            nus=[]
+            i=0
+            for prod in prods:
+                nus.append(self.get_nu(sum([list(p) for p in prod], start=[])[:-1]))
+            nu = min(nus)
+            self.first_I=[nu,[]]
+            if self.v: print(self.first_I)
         return self.first_I
+
 
 
 def read_file(filename='test.txt'):
@@ -319,7 +354,7 @@ def get_P(R, c, n, m, v=False):
     return P
 
 
-def main(rR, c, n, m, solver=None, forced_down=False, first=-1, last=-1, lin=True, v=0):
+def main(rR, c, n, m, solver=None, forced_down=False, first=-1, last=-1, lin=True, v=0, use_tree=True, is_beta_sort=False):
     """Оболочка для запуска решения solve
     Обеспечивает красивый вывод решения, засекает время выполнения
     Принимает:
@@ -339,7 +374,7 @@ def main(rR, c, n, m, solver=None, forced_down=False, first=-1, last=-1, lin=Tru
     global count
     count = 0
 
-    start = time.time()
+
     if solver is None:
         R = []
         if lin:
@@ -348,36 +383,59 @@ def main(rR, c, n, m, solver=None, forced_down=False, first=-1, last=-1, lin=Tru
             R = rR
         P = get_P(R, c, n, m)
         if v: print('P', P)
-        solver = MatrixSolve(n, m, P, v)
-    ans = solver.solve(forced_down=forced_down, first=first, last=last)
+        solver = MatrixSolve(n, m, P, v=v, use_tree=use_tree)
+    best=None
+    prep=time.time()
+    if v:print(f'----------before prep {prep}')
+    if forced_down:  # найти предварительный рекорд
+        solver.get_first()
+        if v: print(f"get first nu={solver.first_I[0]}")
+        nu_str = f"f_nu={solver.first_I[0]}--"
+        best = [solver.first_I[0], []]
+    start = time.time()
+    if v:print(f'----------start {start}: {start-prep}')
+    ans = solver.solve(best=best, first=first, last=last, is_beta_sort=is_beta_sort)
     finish = time.time()
-
+    if v or counting:print(f'----------finish {finish}: {finish-prep}={start-prep}+{finish-start}')
     # создание вывода для оконного приложения
-    ans_str = ""
+    ans_str=""
+    if first==-1 and last==-1:
+        ans_str += f"Минимальное значение функции      D = {solver.D_min}\n"
     if forced_down:
-        ans_str += f'Значение предварительного рекорда {solver.first_I[0]}\n'
-    ans_str += f'Значение функционала:{ans[0]}\nНайденные линейные порядки:\n'
+        ans_str += f'Значение предварительного рекорда \u010e = {solver.first_I[0]}\n'
+    nameD="D_"
+    if first!=-1:
+        nameD+="i"
+    if last!=-1:
+        nameD+="j"
+    if len(nameD)==2:
+        nameD+="LO"
+    nameD=" "*(6-len(nameD))+nameD
+    ans_str += f'Минимальное значение функции {nameD} = {ans[0]}\nНайденные линейные порядки:\n'
     for a in ans[1]:
         ans_str += f"\t"
         for i in a[-1::-1]:
             ans_str += f"{i + 1}<"
         ans_str = ans_str[:-1] + '\n'
-    ans_str += f'Время {finish - start}s.\nколичество count={count}\n'
+    ans_str += f'Время {finish - start:.3f}s.\nколичество пройденных вершин={count}\n'
 
     if v:
         print(f'f_d={forced_down}, f={first}, l={last}, ans={ans}')
         I = ans[1][0][:-1]
         print(f'{solver.get_nu(I)} {I}')
-    tree_str=""
-    if count>1000:
+    tree_str="no tree"
+    if use_tree and count>1000:
         s=input("show tree?('y' or other)")
         if s=="y":
-            tree_str=str(solver.tree)
+            tree_str = str(solver.tree)
         else:
             tree_str=f"no tree count={count}"
+    else:
+        tree_str = str(solver.tree)
+    c=count
     count = 0
 
-    return ans_str, ans, solver, tree_str
+    return ans_str, ans, solver, tree_str, [finish-start, c]
 
 
 def scc(C, v=0):
@@ -436,8 +494,11 @@ def special_case(r, c, n, m, v=0):
     count = 0
 
     start = time.time()
-    ans_str = ''
+
+
     P = get_P(get_R(r, n, m), c, n, m, v)
+    solver = MatrixSolve(n, m, P, v=0, use_tree=False)
+    ans_str = f"Минимальное значение функции    D = {solver.D_min}\n"
     C = get_C(P, n)
     if v:
         print('C')
@@ -457,7 +518,6 @@ def special_case(r, c, n, m, v=0):
     sorted_Di = [(sum(C_Di[i]), D[i]) for i in range(k)]  # подсчет количества исходящих ребер в графе конденсации
     sorted_Di.sort()  # выстраиваем компоненты в линейный порядок
     if v: print(sorted_Di)
-    ans_str += f'D={[[d + 1 for d in sd[1]] for sd in sorted_Di]}\n'
 
     if v != -1:  # построение конденсации графа (картинка "doctest-output/main.gv.png")
         graph = graphviz.Digraph(name='main', engine='fdp')
@@ -482,20 +542,25 @@ def special_case(r, c, n, m, v=0):
 
     ans_rename = []
     best = []
+    counts=[]
     for s, Di in sorted_Di:
         if v: print(Di)
         ni = len(Di)
-        p = [[P[i][j] for j in Di] for i in Di]
-        solver = MatrixSolve(ni, m, p, v=0)
+        Pi = [[P[i][j] for j in Di] for i in Di]
+        count=0
+        solver_i = MatrixSolve(ni, m, Pi, v=0)
         if v:
             print('ni Pi')
             print(ni)
-            print(p)
+            print(Pi)
         if ni == 1:
             a = [0, [[0]]]
         else:
-            a = solver.solve(forced_down=True)
+            solver_i.get_first()
+            best = [solver_i.first_I[0], []]
+            a = solver_i.solve(best=best)
         a_r = []
+        counts.append(count)
         best.append(a[0])
         for a_ in a[1]:  # возвращение из индексов подзадач ([1],[1,2],[1]) к индексам основной задачи ([3],[4,1],[2])
             ai_r = []
@@ -509,15 +574,18 @@ def special_case(r, c, n, m, v=0):
     # генерация всех вариантов перестановок: [{[1,2], [2,1]}, {[3,4], [4,3]}] -> 1234,1243,2134,2143
     res = get_res_from_parts(ans_rename)
     finish = time.time()
-
-    ans_str += f'Значения функционала:{best}\nРешения:\n'
+    best=solver.get_nu(res[0][:-1])
+    ans_str += f'Минимальное значение функции D_LO = {best}\n'
+    ans_str += f'Разбиение на компоненты: {[[d + 1 for d in sd[1]] for sd in sorted_Di]}\n'
+    ans_str += f'Решения:\n'
     for a in res:
         ans_str += f"\t"
         for i in a[-1::-1]:
             ans_str += f"{i + 1}<"
         ans_str = ans_str[:-1] + '\n'
-    ans_str += f'Время {finish - start}s.\n'
-    return ans_str, [best, res]
+    ans_str += f'Время {finish - start:.3f}s.\n'
+    count=0
+    return ans_str, [best, res], solver, [finish-start,counts]
 
 
 def get_res_from_parts(parts):
@@ -530,34 +598,35 @@ def get_res_from_parts(parts):
         res = res1
     return res
 
-counting=True
 if __name__ == "__main__":
+    counting=True
     """for k in (4, 6, 8, 10, 12, 15, 17, 20):
         r, c, n, m = read_file(f'test_fast_{k}.txt')
         print(f"----------------k={k}----------------")
-        ans_s, ans, solver, tree = main(r, c, n, m, v=0)
+        ans_s, ans, solver, tree, count_ = main(r, c, n, m, v=0)
         print(ans_s)
-        ans_s, ans, solver, tree = main(r, c, n, m, forced_down=True, v=0)
+        ans_s, ans, solver, tree, count_ = main(r, c, n, m, forced_down=True, v=0)
         print(ans_s)
         print("-------------------------------------")"""
 
-    r, c, n, m = read_file('tests/test_n12_m9_fast_test.txt')
-    ans_s, ans, solver, tree = main(r, c, n, m, v=1)
+    r, c, n, m = read_file('tests/test_n4_ni3_D2_m3_2025_05_06_03_13_51921570.txt')
+    ans_s, ans, solver, tree, count_ = main(r, c, n, m, v=0,is_beta_sort=0,use_tree=0)
     print(ans_s)
-    print(tree)
-    input("next?")
-    ans_s, ans, solver, tree = main(r, c, n, m, solver=solver, forced_down=True)
+    #print(tree)
+    #print(sum(solver.alpha))
+    input("next?1")
+    ans_s, ans, solver, tree, count_ = main(r, c, n, m, forced_down=True, v=0)
     print(ans_s)
-    print(tree)
-    input("next?")
+    #print(tree)
+    input("next?2")
     if m % 2:  # and c==[1.0]*m
         print(special_case(r, c, n, m, 5)[0])
-    input("next?")
+        input("next?")
     ans = []
     print("-----------------------------------------")
     for i in range(n):
         print(f'last={i + 1}')
-        ans_str, a, solver, tree = main(r, c, n, m, solver=solver, last=i)
+        ans_str, a, solver, tree, count_ = main(r, c, n, m, solver=solver, last=i)
         print(ans_str)
         print(tree)
         ans.append(a)
@@ -566,7 +635,7 @@ if __name__ == "__main__":
     ans = []
     for i in range(n):
         print(f'first={i + 1}')
-        ans_str, a, solver, tree = main(r, c, n, m, solver=solver, first=i)
+        ans_str, a, solver, tree, count_ = main(r, c, n, m, solver=solver, first=i)
         print(ans_str)
         print(tree)
         ans.append(a)
@@ -577,7 +646,7 @@ if __name__ == "__main__":
         for j in range(n):
             if i == j: continue
             print(f'first={i + 1}, last={j + 1}')
-            ans_str, a, solver, tree = main(r, c, n, m, solver, first=i, last=j)
+            ans_str, a, solver, tree, count_ = main(r, c, n, m, solver, first=i, last=j)
             print(ans_str)
             print(tree)
             rr[i][j] = a[0]

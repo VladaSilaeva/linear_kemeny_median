@@ -4,8 +4,8 @@ from tkinter import messagebox, filedialog
 from PIL import Image, ImageTk
 
 from matrix_solve import main, special_case
-
-
+from prettytable import PrettyTable
+import os
 class Application:
     def __init__(self, master):
         self.master = master # окно, от которого наследуется приложение
@@ -574,50 +574,65 @@ class Application:
         lin = self.var.get() == "линейный"
 
         def solve():
-            ans_str, ans, self.solver, tree_str = main(self.data, self.c, self.alternatives, self.experts,
+            ans_str, ans, self.solver, tree_str, count_ = main(self.data, self.c, self.alternatives, self.experts,
                                                        solver=self.solver, lin=lin)
-            self.display_results("solve\n" + ans_str + "\nДерево решений:\n" + tree_str, "обычное")
+            self.display_results(ans_str + "\nДерево решений:\n" + tree_str, "Решение")
 
         def fast_solve():
-            ans_str, ans, self.solver, tree_str = main(self.data, self.c, self.alternatives, self.experts,
+            ans_str, ans, self.solver, tree_str, count_ = main(self.data, self.c, self.alternatives, self.experts,
                                                        solver=self.solver, lin=lin, forced_down=True)
-            self.display_results("fast solve\n" + ans_str + "\nДерево решений:\n" + tree_str, "с ускорением")
+            self.display_results(ans_str + "\nДерево решений:\n" + tree_str, "Решение с ускорением")
 
         def special_solve():
-            ans_str, ans = special_case(self.data, self.c, self.alternatives, self.experts)
-            self.display_results("special solve\n" + ans_str, "в частном случае")
+            ans_str, ans, self.solver, count_ = special_case(self.data, self.c, self.alternatives, self.experts)
+            self.display_results(ans_str, "Решение в частном случае")
 
         def first():
             ans_strs = ""
             ans = []
+
             for i in range(self.alternatives):
                 ans_strs += f'first={i + 1}\n'
-                ans_str, a, self.solver, tree_str = main(self.data, self.c, self.alternatives, self.experts,
+                ans_str, a, self.solver, tree_str, count_ = main(self.data, self.c, self.alternatives, self.experts,
                                                          solver=self.solver, first=i, lin=True)
                 ans_strs += ans_str + '\n'
                 ans.append(a)
-            ans_strs += '\n'.join([f'r_first({i + 1})={ans[i]}' for i in range(self.alternatives)])
-            r=dict()
-            for i in range(self.alternatives):
-                if ans[i][0] not in r.keys():
-                    r[ans[i][0]]=[]
-                r[ans[i][0]].append(i+1)
-            r_i=sorted(r.items())
-            print(r_i)
-            ans_strs +='\n'+'\n'.join([f'r{i}={d}' for d,i in r_i])
-            self.display_results(ans_strs, "первый закреплен")
+            D = self.solver.D_min
+            D_LO=min(ans)[0]
+            tab1 = PrettyTable(list(range(self.alternatives+1)))
+            r_i = [[ans[i][0], (D_LO)/(ans[i][0]), i + 1] for i in range(self.alternatives)]
+            tab1.add_row(['a_i']+[i for d,r,i in r_i], divider=True)
+            #tab1.add_row(['D_i'] + [d for d,r, i in r_i], divider=True)
+            tab1.add_row(['r_i'] + [d for d,r, i in r_i], divider=True)
+            tab1.header=False
+            r_i.sort(reverse=True,key=lambda x:(x[0],x[1],-x[2]))
+            tab2 = PrettyTable(list(range(self.alternatives+1)))
+            tab2.add_row(['r_i'] + [d for d,r, i in r_i], divider=True)
+            #tab2.add_row(['D_i'] + [d for d,r, i in r_i], divider=True)
+            tab2.add_row(['a_i'] + [i for d,r, i in r_i], divider=True)
+            tab2.header = False
+            ans_strs=tab2.get_string()+'\n\n'+tab1.get_string()+'\n\n'+ans_strs
+
+            self.display_results(ans_strs, "Рейтинг (закреплен первый)")
 
         def last():
             ans_strs = ""
             ans = []
             for i in range(self.alternatives):
-                ans_strs += f'last={i + 1}\n'
-                ans_str, a, self.solver, tree_str = main(self.data, self.c, self.alternatives, self.experts,
+                #ans_strs += f'last={i + 1}\n'
+                ans_str, a, self.solver, tree_str, count_ = main(self.data, self.c, self.alternatives, self.experts,
                                                          solver=self.solver, last=i, lin=True)
-                ans_strs += ans_str + '\n'
+                #ans_strs += ans_str + '\n'
                 ans.append(a)
-            ans_strs += '\n'.join([f'r_last({i + 1})={ans[i]}' for i in range(self.alternatives)])
-            self.display_results(ans_strs, "последний закреплен")
+            tab1 = PrettyTable(['alternatives']+['r(i)'])
+            r_i = [[ans[i][0], i + 1] for i in range(self.alternatives)]
+            tab1.add_rows([[i,r] for r,i in r_i])
+            r_i.sort(reverse=True,key=lambda x:(x[0],-x[1]))
+            tab2 = PrettyTable(['r(i)','alternatives'])
+            tab2.add_rows(r_i)
+            ans_strs=tab2.get_string()+'\n\n'+tab1.get_string()+'\n\n'+ans_strs
+
+            self.display_results(ans_strs, "Рейтинг (последний закреплен)")
 
         def first_last():
 
@@ -629,18 +644,18 @@ class Application:
                     raise ValueError
                 f = int(entry_first.get())
                 l = int(entry_last.get())
-                ans_str1, ans1, self.solver, tree_str = main(self.data, self.c, self.alternatives, self.experts,
+                ans_str1, ans1, self.solver, tree_str, count_ = main(self.data, self.c, self.alternatives, self.experts,
                                                              solver=self.solver, first=f - 1, last=l - 1,
                                                              lin=lin)
-                ans_str2, ans2, self.solver, tree_str = main(self.data, self.c, self.alternatives, self.experts,
+                ans_str2, ans2, self.solver, tree_str, count_ = main(self.data, self.c, self.alternatives, self.experts,
                                                              solver=self.solver, first=l - 1, last=f - 1,
                                                              lin=lin)
                 ans_str = f'first={f}, last={l}\n{ans_str1} first={l}, last={f}\n{ans_str2}\n'
                 if ans1[0] < ans2[0]:
-                    ans_str += f'{f} лучше {l} в {ans2[0] / ans1[0]} раз'
+                    ans_str = f'{f} предпочтительней {l} в {ans2[0] / ans1[0]:.3f} раз\n\n' + ans_str
                 else:
-                    ans_str += f'{l} лучше {f} в {ans1[0] / ans2[0]} раз'
-                self.display_results(ans_str, f"сравнение {f} и {l}")
+                    ans_str = f'{l} предпочтительней {f} в {ans1[0] / ans2[0]:.3f} раз\n\n' + ans_str
+                self.display_results(ans_str, f"Сравнение {f} и {l}")
             except ValueError:
                 messagebox.showerror("Ошибка", "Неверное значение! Введите заново.")
 
@@ -663,10 +678,10 @@ class Application:
         button_fast_solve.pack(side="left", padx=10)
         button_special_solve.pack(side="left", padx=10)
 
-        button_first = tk.Button(self.master, text="Закрепить первую альтернативу", command=first)
+        button_first = tk.Button(self.master, text="Получить рейтинг, закрепив первую альтернативу", command=first)
         button_last = tk.Button(self.master, text="Закрепить последнюю альтернативу", command=last)
         button_first.pack()
-        button_last.pack()
+        #button_last.pack()
 
         compare_frame = tk.Frame(self.master)
         entry_first = tk.Entry(compare_frame)
@@ -698,38 +713,43 @@ class Application:
         def save():
             file_path = filedialog.asksaveasfilename(filetypes=[('Text files', '*.txt')])
             if file_path:
-                f = open(file_path, 'w', encoding='UTF-8')
+                file_path=file_path.split(".")[0]
+                f = open(file_path+".txt", 'w', encoding='UTF-8')
                 f.write(f'{self.alternatives} {self.experts}\n')
                 f.write(' '.join(map(str, self.c)))
                 f.write('\n')
                 for row in self.data:
                     f.write(' '.join(map(str, row)) + '\n')
-                f.write(f'\nРешение {solution_type}\n')
+                f.write(f'\n{solution_type}\n')
                 f.write(ans_str)
+                if solution_type=="Решение в частном случае":
+                    os.rename("doctest-output/main.gv.png", file_path+".png")
                 f.close()
 
         # Окно для отображения результатов
         result_window = tk.Toplevel(self.master)
-        result_window.title(f"Решение {solution_type}")
+        result_window.title(solution_type)
         l = 6
-        if solution_type == "в частном случае":
+        if solution_type == "Решение в частном случае":
             l = 1
         save_button = tk.Button(result_window, text="Сохранить ответ", command=save)
         save_button.pack()
         text_area = tk.Text(result_window, height=10 * l, width=400)
         text_area.pack(padx=10, pady=10)
-        if solution_type == "в частном случае":
-            canvas = tk.Canvas(result_window, height=600, width=800, bg="white")
+        if solution_type == "Решение в частном случае":
+
             image = Image.open("doctest-output/main.gv.png")
             width, height = image.size
-            width, height = 600 * width // height, 600
+            if width>600 or height>600:
+                width, height = 600 * width // height, 600
+            canvas = tk.Canvas(result_window, height=height, width=width, bg="white")
             image = image.resize((width, height))
             self.photo = ImageTk.PhotoImage(image)
-            canvas.create_image((400, 0), anchor='n', image=self.photo)
+            canvas.create_image((width//2, 0), anchor='n', image=self.photo)
             canvas.pack(anchor="n")
 
         text_area.insert(tk.END, ans_str)
-        text_area.config(state="disabled")
+        #text_area.config(state="disabled")
 
 
 if __name__ == "__main__":

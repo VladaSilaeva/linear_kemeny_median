@@ -6,11 +6,12 @@ n=35
 m=9
 
 N=5
-def find_special_case(n,m,N,Ni):
-    print(f"start gener_N(n={n}, m={m}, N={N}, Ni={Ni})")
+def find_special_case(n,m,K,Ni):
+    """Ищет случай с размером максимальной компоненты менее Ni. K - максимальное количество тестов"""
+    print(f"start gener_N(n={n}, m={m}, K={K}, Ni={Ni})")
     k = 0#[]
     try:
-        while N > 0:
+        while K > 0:
             if k%100==0:
                 date_str = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S%f")
                 print(f'\tk={k}\t{date_str}')
@@ -30,7 +31,7 @@ def find_special_case(n,m,N,Ni):
                 f.write(str_test)
                 f.write(f'\n{D}')
                 f.close()
-                N -= 1
+                K -= 1
             elif ni>-Ni>0:
                 print(l, ni)
                 print(D)
@@ -40,7 +41,7 @@ def find_special_case(n,m,N,Ni):
                 f.write(str_test)
                 f.write(f'\n{D}')
                 f.close()
-                N -= 1
+                K -= 1
         print(f'\tk={k}')
     except KeyboardInterrupt:
         print(f'\tk={k}')
