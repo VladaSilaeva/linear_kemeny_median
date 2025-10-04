@@ -1,15 +1,16 @@
 import time
+import sys
 from itertools import permutations, product
 from math import factorial
 from random import shuffle
 
 import graphviz
 import numpy as np
-from treelib import Tree
+from treelib import Tree # для красивого вывода дерева решений
 
 count = 0
 counting=False
-
+source="graph-output/main" # graph-output - имя будущей папки, для хранения графа main.gv и его изображения main.gv.png
 class MatrixSolve:
     def __init__(self, n, m, P, v=0,use_tree=True):
         self.v = v  # verbal - вывод разных уровней работы программы (от 0 до 5)
@@ -519,8 +520,8 @@ def special_case(r, c, n, m, v=0):
     sorted_Di.sort()  # выстраиваем компоненты в линейный порядок
     if v: print(sorted_Di)
 
-    if v != -1:  # построение конденсации графа (картинка "doctest-output/main.gv.png")
-        graph = graphviz.Digraph(name='main', engine='fdp')
+    if v != -1:  # построение конденсации графа (картинка хранится в sourse+".gv.png")
+        graph = graphviz.Digraph(name=source.split('/')[1], engine='fdp')
         graph.attr(compound='true')
         for i in range(n):
             graph.node(f'a{i}', label=f'{i + 1}')
@@ -538,7 +539,7 @@ def special_case(r, c, n, m, v=0):
                     graph.edge(f'cluster{k1}', f'cluster{k2}', color='blue')
         if v: print(graph.source)
         graph.format = 'png'
-        graph.render(directory='doctest-output', view=bool(v))
+        graph.render(directory=source.split('/')[0], view=bool(v))
 
     ans_rename = []
     best = []
@@ -600,16 +601,10 @@ def get_res_from_parts(parts):
 
 if __name__ == "__main__":
     counting=True
-    """for k in (4, 6, 8, 10, 12, 15, 17, 20):
-        r, c, n, m = read_file(f'test_fast_{k}.txt')
-        print(f"----------------k={k}----------------")
-        ans_s, ans, solver, tree, count_ = main(r, c, n, m, v=0)
-        print(ans_s)
-        ans_s, ans, solver, tree, count_ = main(r, c, n, m, forced_down=True, v=0)
-        print(ans_s)
-        print("-------------------------------------")"""
-
-    r, c, n, m = read_file('tests/test_n4_ni3_D2_m3_2025_05_06_03_13_51921570.txt')
+    test_name='tests/test_n4_ni3_D2_m3_2025_05_06_03_13_51921570.txt'
+    if len(sys.argv) > 1:
+        test_name=sys.argv[1]
+    r, c, n, m = read_file(test_name)
     ans_s, ans, solver, tree, count_ = main(r, c, n, m, v=0,is_beta_sort=0,use_tree=0)
     print(ans_s)
     #print(tree)

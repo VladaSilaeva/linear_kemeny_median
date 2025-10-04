@@ -3,7 +3,7 @@ from tkinter import messagebox, filedialog
 
 from PIL import Image, ImageTk
 
-from matrix_solve import main, special_case
+from matrix_solve import main, special_case, source
 from prettytable import PrettyTable
 import os
 class Application:
@@ -723,7 +723,7 @@ class Application:
                 f.write(f'\n{solution_type}\n')
                 f.write(ans_str)
                 if solution_type=="Решение в частном случае":
-                    os.rename("doctest-output/main.gv.png", file_path+".png")
+                    os.rename(source+".gv.png", file_path+".png")
                 f.close()
 
         # Окно для отображения результатов
@@ -738,7 +738,7 @@ class Application:
         text_area.pack(padx=10, pady=10)
         if solution_type == "Решение в частном случае":
 
-            image = Image.open("doctest-output/main.gv.png")
+            image = Image.open(source+".gv.png")
             width, height = image.size
             if width>600 or height>600:
                 width, height = 600 * width // height, 600

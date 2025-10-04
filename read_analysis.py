@@ -21,14 +21,14 @@ def plot_bar(name):
     print(f)
     plt.plot([str(i) for i in  x],y, color='black',marker='o')
     plt.show()
-#plot_bar('analysis_k1000000_n35_m3_2025_05_09_10_40_08096038')
+plot_bar('analysis/analysis_k1000000_n35_m3_2025_05_09_10_40_08096038')
 
 
 def open_data(K,n,m,k=-1):
     if k==-1:
-        files=glob.glob(f'analysis_k{K}_n{n}_m{m}_*')
+        files=glob.glob(f'analysis/analysis_k{K}_n{n}_m{m}_*')
     else:
-        files=glob.glob(f'analysis_k{K}_{k}_n{n}_m{m}_*')
+        files=glob.glob(f'analysis/analysis_k{K}_{k}_n{n}_m{m}_*')
     d=[]
     with open(files[0]+'/data.json') as json_file:
         d=json.load(json_file)
