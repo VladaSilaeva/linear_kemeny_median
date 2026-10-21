@@ -26,9 +26,9 @@ def plot_bar(name):
 
 def open_data(K,n,m,k=-1):
     if k==-1:
-        files=glob.glob(f'analysis/analysis_k{K}_n{n}_m{m}_*')
+        files=glob.glob(f'research_practice_analysis/analysis_k{K}_n{n}_m{m}_*')
     else:
-        files=glob.glob(f'analysis/analysis_k{K}_{k}_n{n}_m{m}_*')
+        files=glob.glob(f'research_practice_analysis/analysis_k{K}_{k}_n{n}_m{m}_*')
     d=[]
     if len(files):
         with open(files[0]+'/data.json') as json_file:
@@ -85,9 +85,9 @@ def plot_1(K,n,k_,data):
     plt.title(f"$n={n}$, количество тестов=${K}$"+(bool(k_)*f", степень несогласованности $k={k_}$"))
     plt.show()
 data=[]
-K = 10000
+K = 100000
 n=35
-k_s=list(range(10, (35**2-35)//2, 10))
+k_s=list(range(11, 19))
 m_s=(5,6,7)
 
 for k_ in k_s:

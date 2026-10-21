@@ -2,21 +2,24 @@ import datetime
 import json
 import os
 
-import PySimpleGUI as sg
+#import PySimpleGUI as sg
+from tqdm import tqdm
+
+
 from prettytable import PrettyTable
 
 from matrix_solve import get_P, get_C, scc
-from rand_test import get_test_k
+from research_practice_rand_test import get_test_dist_k
 
 
-
-def rand_case(N, M, k=-1, Ni=-1, Ni_=0):
+def rand_case(N, M, name_dir, k=-1, Ni=-1, Ni_=0):
     """Прогон одного теста:
-    разбивает на компоненты,
+    генерирует теста функцией get_test_k и строит мажоритарный граф C
+    разбивает на компоненты функцией scc,
     возвращает размеры компонент,
     сохраняет тест если размер максимальной компоненты ni<Ni или ni>Ni_
     """
-    str_test, n, m, c, R = get_test_k(N, M, k)
+    str_test, n, m, c, R = get_test_dist_k(N, M, k)
     P = get_P(R, c, n, m)
     C = get_C(P, n)
     D = scc(C)
@@ -40,25 +43,25 @@ def rand_case(N, M, k=-1, Ni=-1, Ni_=0):
     return str_res, tuple([n for d, n in D_len])
 
 if __name__ == "__main__":
-    if not os.path.exists('analysis'):
-        os.mkdir("analysis")
+    if not os.path.exists('research_practice_analysis'):
+        os.mkdir("research_practice_analysis")
     K = 100000
     N = 35
     M = 5
     k_ = 1
-    for k_ in range(20,10,-1):
-        for M in (5,6,7):
+    for k_ in range(11, 21, 1):
+        for M in [8]:
             date_str = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S%f")
-            name_dir = f'analysis/analysis_k{K}_{k_}_n{N}_m{M}_{date_str}'
+            name_dir = f'research_practice_analysis/analysis_k{K}_{k_}_n{N}_m{M}_{date_str}'
             os.mkdir(name_dir)
             file_name = f'{name_dir}/data'
             d = dict()
-            for i in range(K):
-                sg.one_line_progress_meter(f'Analysis progress N{N} M{M} k{k_}', i + 1, K) # красивое окошко с прогрессом
+            for i in tqdm(range(K)):
+                #sg.one_line_progress_meter(f'Analysis progress N{N} M{M} k{k_}', i + 1, K) # красивое окошко с прогрессом
                 if i % 1000 == 0: # вывод прогресса на консоль
                     date_str = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S%f")
-                    print(f'm{M} k{k_}\ti={i}\t{date_str}')
-                str_res, d_l = rand_case(N, M, k_)
+                    #print(f'm{M} k{k_}\ti={i}\t{date_str}')
+                str_res, d_l = rand_case(N, M, name_dir, k_)
                 if d_l not in d.keys():
                     d[d_l] = 0
                 d[d_l] += 1

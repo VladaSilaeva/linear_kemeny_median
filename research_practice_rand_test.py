@@ -1,5 +1,6 @@
 import random
 import numpy as np
+import json
 
 def randomDistance_k(n, k):
     """Меняем k элементов матрице"""
@@ -21,8 +22,8 @@ def randomDistance_k(n, k):
     return R
 
 
-def get_test_k(n, m, k, v=False):
-    """Генерация теста с перестановкой k пар альтернатив"""
+def get_test_dist_k(n, m, k, v=False):
+    """Генерация теста с инверсией k элементов в матрице"""
     if v: print(f'n={n}')
     str_res = f'{n} {m}\n'
     c = [1] * m
@@ -44,13 +45,12 @@ def get_test_k(n, m, k, v=False):
 
 
 if __name__ == "__main__":
-    m=9
-    l=0.3
-    for n in range(2, 42):
-        k = max(round(n * l / 2), 1)
-        f = open(f'tests/test_n{n}_m{m}.txt', 'w',encoding='UTF-8')
-        f.write(get_test_k(n, m, k, v=1)[0])
-        f.write(f'\nk={k} растояния от\n')
-        f.write(f'\n(ожидалось {l*100:.3f}% перестановок')
-        f.write(f'\n получилось {k/n*200:.3f}% - до 2k элементов из n переставлены)')
-        f.close()
+    m = 8
+    for n in range(5, 40, 5):
+        K = n * (n-1) // 2
+        for k in range (K//10, K , K//10):
+            file_name=f'tests/test_n{n}_m{m}_k{k}-'
+            with open(file_name + "R.json", "w") as write_file:
+                str_res, n, m, c, R =get_test_dist_k(n, m, k, v=False)
+                R=(np.array(R)).tolist()
+                json.dump(R, write_file)

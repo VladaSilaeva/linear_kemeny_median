@@ -11,7 +11,7 @@ def randomPermutation_k(n,k):
     return a
 
 
-def get_test_k(n, m, k, v=False):
+def get_test_perm_k(n, m, k, v=False):
     """Генерация теста с перестановкой k пар альтернатив"""
     if v: print(f'n={n}')
     str_res = f'{n} {m}\n'
@@ -30,7 +30,7 @@ def get_test_k(n, m, k, v=False):
     return str_res, n, m, c, r
 
 
-def get_test(n, m, is_c_eq=True, l=1, v=False):
+def get_test(n, m, k=None, is_c_eq=True, l=1, v=False):
     """Генерация теста со случайной перестановкой (shuffle)"""
     if v: print(f'n={n}')
     str_res = f'{n} {m}\n'
@@ -65,7 +65,7 @@ if __name__ == "__main__":
     for n in range(2, 41):
         k = max(round(n * l / 2), 1)
         f = open(f'tests/fast_test_k/test_n{n}_m{m}_fast_test_.txt', 'w',encoding='UTF-8')
-        f.write(get_test_k(n, m,k,v=1)[0])
+        f.write(get_test_perm_k(n, m, k, v=1)[0])
         f.write(f'\nk={k} пар переставлено\n')
         f.write(f'\n(ожидалось {l*100:.3f}% перестановок')
         f.write(f'\n получилось {k/n*200:.3f}% - до 2k элементов из n переставлены)')
